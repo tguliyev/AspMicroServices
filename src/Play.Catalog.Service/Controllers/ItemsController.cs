@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Play.Catalog.Service.Dtos;
+using Play.Catalog.Service.Entities;
+using Play.Catalog.Service.Extensions;
+using Play.Catalog.Service.Repositories;
 
 namespace Play.Catalog.Service.Controllers;
 
@@ -7,50 +10,53 @@ namespace Play.Catalog.Service.Controllers;
 [Route("[controller]")]
 public class ItemsController : ControllerBase {
     
-    private static readonly List<ItemDto> items = new() {
-        new ItemDto(Guid.NewGuid(), "Potion", "Restore a little amount of HP", 5, DateTimeOffset.UtcNow),
-        new ItemDto(Guid.NewGuid(), "Antidote", "Cures poison", 7, DateTimeOffset.UtcNow),
-        new ItemDto(Guid.NewGuid(), "Bronze sword", "Deals a small amount of damage", 20, DateTimeOffset.UtcNow),
-        new ItemDto(Guid.NewGuid(), "Bronze sword", "Deals a small amount of damage", 20, DateTimeOffset.UtcNow),
-        new ItemDto(Guid.NewGuid(), "Bronze sword", "Deals a small amount of damage", 20, DateTimeOffset.UtcNow)
-    };
+    private readonly IItemsRepository itemsRepo;
+
+    public ItemsController(IItemsRepository repository)
+    {
+        itemsRepo = repository;
+    }
 
     [HttpGet]
-    public List<ItemDto> Get() => items;
-
+    public async Task<IEnumerable<ItemDto>> GetAsync() => (await itemsRepo.GetAllAsync()).Select(item => item.AsDto());
 
     [HttpGet("{id}")]
-    public ItemDto? GetById(Guid id) => items.FirstOrDefault(item => item.Id == id);
+    public async Task<ActionResult<ItemDto>> GetByIdAsync(Guid id) {
+        ItemDto? item = (await itemsRepo.GetAsync(id))?.AsDto();
+        return item == null ? NotFound() : Ok(item);
+    }
 
     [HttpPost]
-    public ActionResult<ItemDto> Post(CreateItemDto item) {
-        ItemDto newItem = new ItemDto(Guid.NewGuid(), item.Name, item.Description, item.Price, DateTimeOffset.UtcNow);
-        items.Add(newItem);
-        return new CreatedAtActionResult(nameof(GetById), "Items", new { id = newItem.Id }, newItem);
-        // return CreatedAtAction(nameof(GetById), new {id = newItem.Id}, newItem);
+    public async Task<ActionResult<ItemDto>> PostAsync(CreateItemDto createItemDto) {
+
+        Item newItem = new Item {
+            Name = createItemDto.Name, 
+            Description = createItemDto.Description,
+            Price = createItemDto.Price,
+            CreatedDate = DateTimeOffset.UtcNow
+        };
+        await itemsRepo.CreateAsync(newItem);
+        return CreatedAtAction(nameof(GetByIdAsync), new {id = newItem.Id}, newItem);
     }
 
     [HttpPut("{id}")]
-    public IActionResult Put(Guid id, UpdateItemDto updatingItem) {
-        ItemDto existingItem = items.FirstOrDefault(item => item.Id == id);
-
-        if (existingItem != null) {
-            ItemDto updatedItem = existingItem with {
-                Name = updatingItem.Name,
-                Description = updatingItem.Description,
-                Price = updatingItem.Price
-            };
-            int index = items.FindIndex(item => item.Id == id);
-            items[index] = updatedItem;
-            return NoContent();
-        } else return NotFound();
-        // return CreatedAtAction(nameof(GetById), new {id = newItem.Id}, newItem);
+    public async Task<IActionResult> PutAsync(Guid id, UpdateItemDto updatingItem) {
+        Item? existingItem = await itemsRepo.GetAsync(id);
+        if (existingItem == null) return NotFound(); 
+        
+        existingItem.Name = updatingItem.Name;
+        existingItem.Description = updatingItem.Description;
+        existingItem.Price = updatingItem.Price;
+        
+        await itemsRepo.UpdateAsync(existingItem);
+        return NoContent();       
     }
 
     [HttpDelete("{id}")]
-    public IActionResult Delete(Guid id) {
-        int index = items.FindIndex(item => item.Id == id);
-        items.RemoveAt(index);
+    public async Task<IActionResult> DeleteAsync(Guid id) {
+        Item? existingItem = await itemsRepo.GetAsync(id);
+        if (existingItem == null) return NotFound();
+        await itemsRepo.DelteAsync(id);
         return NoContent();
     }
 }
