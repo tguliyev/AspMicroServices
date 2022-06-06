@@ -1,50 +1,64 @@
+using System.Reflection;
 using Npgsql;
 using Play.Catalog.Service.Entities;
-using Play.Catalog.Service.Settings;
 
 namespace Play.Catalog.Service.Repositories;
 
-public class ItemsRepository : IItemsRepository
+public class PostgreRepository<T> : IRepository<T> where T : IEntity
 {
-    // private const string TABLE_NAME = "items";
-    private const string CONNECTION_STRING = "Host=127.0.0.1:5432;Username=postgres;Password=Turala72124;Database=microservice";
+    private readonly string tableName;
     private readonly NpgsqlConnection dbConn;
 
-    public ItemsRepository(NpgsqlConnection dbConn)
+    public PostgreRepository(NpgsqlConnection dbConn, string tableName)
     {
         this.dbConn = dbConn;
+        this.tableName = tableName;
     }
 
-    public async Task<IReadOnlyCollection<Item>> GetAllAsync()
+    public async Task<IReadOnlyCollection<T>> GetAllAsync()
     {
         await dbConn.OpenAsync();
 
-        await using NpgsqlCommand cmd = new NpgsqlCommand("SELECT * FROM item", dbConn);
+        await using NpgsqlCommand cmd = new NpgsqlCommand("SELECT * FROM $1", dbConn) {
+            Parameters = { new() { Value = tableName } }
+        };
         await using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync();
 
-        List<Item> items = new();
+        List<T> items = new();
         while (await reader.ReadAsync())
         {
-            items.Add(new()
-            {
-                Id = reader.GetGuid(0),
-                Name = reader.GetString(1),
-                Description = reader.GetString(2),
-                Price = reader.GetDecimal(3),
-                CreatedDate = reader.GetDateTime(4)
-            });
+            Type entityType = typeof(T);
+            object? entity = Activator.CreateInstance(entityType);
+            PropertyInfo[] property = entityType.GetProperties();
+
+            for (int i = 0; i < property.Length; i++) {
+                property[i].SetValue(entity, reader.GetValue(i));
+            }
+            
+            T? en = (T?)entity;
+            if (en != null)
+                items.Add(en);
+            // items.Add(new()
+            // {
+            //     Id = reader.GetGuid(0),
+            //     Name = reader.GetString(1),
+            //     Description = reader.GetString(2),
+            //     Price = reader.GetDecimal(3),
+            //     CreatedDate = reader.GetDateTime(4)
+            // });
         }
 
         await dbConn.CloseAsync();
         return items;
     }
 
-    public async Task<Item?> GetAsync(Guid id)
+    public async Task<T?> GetAsync(Guid id)
     {
         await dbConn.OpenAsync();
-        await using NpgsqlCommand cmd = new NpgsqlCommand("SELECT * FROM item WHERE id=$1", dbConn)
+        await using NpgsqlCommand cmd = new NpgsqlCommand("SELECT * FROM $1 WHERE id=$2", dbConn)
         {
             Parameters = {
+                new() { Value = tableName },
                 new() { Value = id }
             }
         };
@@ -52,19 +66,21 @@ public class ItemsRepository : IItemsRepository
         await using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
 
-        Item item = new Item()
-        {
-            Id = reader.GetGuid(0),
-            Name = reader.GetString(1),
-            Description = reader.GetString(2),
-            Price = reader.GetDecimal(3),
-            CreatedDate = reader.GetDateTime(4)
-        };
+        Type entityType = typeof(T);
+        object? entity = Activator.CreateInstance(entityType);
+        PropertyInfo[] property = entityType.GetProperties();
+
+        for (int i = 0; i < property.Length; i++) {
+            property[i].SetValue(entity, reader.GetValue(i));
+        }
+        
+        T? en = (T?)entity;
+
         await dbConn.CloseAsync();
-        return item;
+        return en;
     }
 
-    public async Task CreateAsync(Item entity)
+    public async Task CreateAsync(T entity)
     {
         if (entity == null) throw new ArgumentNullException();
 
@@ -85,7 +101,7 @@ public class ItemsRepository : IItemsRepository
         entity.Id = Guid.Parse(entityId);
     }
 
-    public async Task UpdateAsync(Item entity)
+    public async Task UpdateAsync(T entity)
     {
         await dbConn.OpenAsync();
         await using NpgsqlCommand cmd = new NpgsqlCommand("UPDATE item SET name=$1, description=$2, price=$3 WHERE id=$4", dbConn)
