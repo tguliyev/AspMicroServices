@@ -12,7 +12,10 @@ public static class Extensions {
             PgSettings? settings = configuration?.GetSection(nameof(PgSettings)).Get<PgSettings>();
             return new NpgsqlConnection(settings?.ConnectionString);
         });
-        services.AddSingleton<IRepository<T>, PostgreRepository<T>>();
+        services.AddSingleton<IRepository<T>>(serviceProvider => {
+            NpgsqlConnection? dbConn = serviceProvider.GetService<NpgsqlConnection>();
+            return new PostgreRepository<T>(dbConn, tableName);
+        });
         return services;
     }
 }
