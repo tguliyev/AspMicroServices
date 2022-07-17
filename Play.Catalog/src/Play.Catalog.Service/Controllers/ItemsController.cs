@@ -1,11 +1,10 @@
+using Play.Common;
 using Microsoft.AspNetCore.Mvc;
 using Play.Catalog.Service.Dtos;
 using Play.Catalog.Service.Entities;
 using Play.Catalog.Service.Extensions;
-using Play.Catalog.Service.Repositories;
 
 namespace Play.Catalog.Service.Controllers;
-
 [ApiController]
 [Route("[controller]")]
 public class ItemsController : ControllerBase {

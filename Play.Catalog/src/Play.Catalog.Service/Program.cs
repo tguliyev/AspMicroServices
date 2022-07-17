@@ -1,5 +1,5 @@
+using Play.Common.PostgresDb;
 using Play.Catalog.Service.Entities;
-using Play.Catalog.Service.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
