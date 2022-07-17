@@ -17,11 +17,11 @@ public class ItemsController : ControllerBase {
     }
 
     [HttpGet]
-    public async Task<IEnumerable<ItemDto?>> GetAsync() => (await itemsRepo.GetAllAsync()).Select(item => item?.AsDto());
+    public async Task<IEnumerable<ItemDto>> GetAsync() => (await itemsRepo.GetAllAsync()).Select(item => item.AsDto());
 
     [HttpGet("{id}")]
     public async Task<ActionResult<ItemDto>> GetByIdAsync(Guid id) {
-        ItemDto? item = (await itemsRepo.GetAsync(id))?.AsDto();
+        ItemDto? item = (await itemsRepo.GetAsync(id)).AsDto();
         return item == null ? NotFound() : Ok(item);
     }
 
@@ -32,7 +32,7 @@ public class ItemsController : ControllerBase {
             Name = createItemDto.Name, 
             Description = createItemDto.Description,
             Price = createItemDto.Price,
-            CreatedDate = DateTimeOffset.UtcNow
+            CreatedDate = DateTime.Now
         };
         await itemsRepo.CreateAsync(newItem);
         return CreatedAtAction(nameof(GetByIdAsync), new {id = newItem.Id}, newItem);
@@ -40,20 +40,20 @@ public class ItemsController : ControllerBase {
 
     [HttpPut("{id}")]
     public async Task<IActionResult> PutAsync(Guid id, UpdateItemDto updatingItem) {
-        Item? existingItem = await itemsRepo.GetAsync(id);
-        if (existingItem == null) return NotFound(); 
+        Item existingItem = await itemsRepo.GetAsync(id);
+        if (existingItem == null) return NotFound();
         
         existingItem.Name = updatingItem.Name;
         existingItem.Description = updatingItem.Description;
         existingItem.Price = updatingItem.Price;
         
         await itemsRepo.UpdateAsync(existingItem);
-        return NoContent();       
+        return NoContent();
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteAsync(Guid id) {
-        Item? existingItem = await itemsRepo.GetAsync(id);
+        Item existingItem = await itemsRepo.GetAsync(id);
         if (existingItem == null) return NotFound();
         await itemsRepo.DelteAsync(id);
         return NoContent();
