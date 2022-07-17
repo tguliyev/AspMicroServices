@@ -14,6 +14,10 @@ public static class Extensions {
         });
         services.AddSingleton<IRepository<T>>(serviceProvider => {
             NpgsqlConnection? dbConn = serviceProvider.GetService<NpgsqlConnection>();
+            
+            if (dbConn == null)
+                throw new ArgumentNullException();
+
             return new PostgreRepository<T>(dbConn, tableName);
         });
         return services;

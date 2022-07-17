@@ -39,7 +39,7 @@ public class PostgreRepository<T> : IRepository<T> where T : IEntity
 
     public async Task<T?> GetAsync(Guid id) {
         await dbConn.OpenAsync();
-        Console.WriteLine(tableName);
+        // Console.WriteLine(tableName);
         await using NpgsqlCommand cmd = new($"SELECT * FROM {tableName} WHERE id=$1", dbConn) {
             Parameters = { new() { Value = id } }
         };

@@ -12,13 +12,12 @@ public class ItemsController : ControllerBase {
     
     private readonly IRepository<Item> itemsRepo;
 
-    public ItemsController(IRepository<Item> repository)
-    {
+    public ItemsController(IRepository<Item> repository) {
         itemsRepo = repository;
     }
 
     [HttpGet]
-    public async Task<IEnumerable<ItemDto>> GetAsync() => (await itemsRepo.GetAllAsync()).Select(item => item.AsDto());
+    public async Task<IEnumerable<ItemDto?>> GetAsync() => (await itemsRepo.GetAllAsync()).Select(item => item?.AsDto());
 
     [HttpGet("{id}")]
     public async Task<ActionResult<ItemDto>> GetByIdAsync(Guid id) {
