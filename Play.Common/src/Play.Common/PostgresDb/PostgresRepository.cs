@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using System.Reflection;
 using Npgsql;
 
@@ -21,7 +22,7 @@ public class PostgreRepository<T> : IRepository<T> where T : IEntity
 
         List<T> items = new();
         while (await reader.ReadAsync()) {
-            T entity = DataToEntity(reader);     
+            T entity = DataToEntity(reader);
             items.Add(entity);
         }
 

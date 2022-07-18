@@ -1,3 +1,5 @@
+using System.Linq.Expressions;
+
 namespace Play.Common;
 public interface IRepository<T> where T : IEntity
 {
